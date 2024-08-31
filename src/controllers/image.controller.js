@@ -24,17 +24,66 @@ const uploadCSV = asyncHandler(async (req, res) => {
     await request.save();
 
     const results = [];
+    const errors = [];
 
     fs.createReadStream(req.file.path)
         .pipe(csv())
-        .on("data", (data) => results.push(data))
+        .on("data", (data) => {
+            const rowNumber = results.length + 1; // Row number is 1-based index
+            const serialNumber = data["Serial Number"];
+            const productName = data["Product Name"];
+            const inputImageUrls = data["Input Image Urls"];
+
+            // Validate fields
+            if (!serialNumber || !productName || !inputImageUrls) {
+                errors.push({
+                    row: rowNumber,
+                    error: "Missing required fields",
+                    data,
+                });
+                return;
+            }
+
+            // Process and validate URLs
+            const urls = inputImageUrls
+                .split(",")
+                .map((url) => url.trim())
+                .filter(Boolean);
+            if (urls.length === 0) {
+                errors.push({
+                    row: rowNumber,
+                    error: "Invalid Input Image Urls",
+                    data,
+                });
+                return;
+            }
+
+            results.push({
+                rowNumber,
+                serialNumber,
+                productName,
+                inputImageUrls: urls,
+            });
+        })
         .on("end", async () => {
+            if (errors.length > 0) {
+                return responseSender(
+                    {
+                        status: BAD_REQUEST,
+                        success: false,
+                        message: "Invalid CSV file",
+                        data: { errors },
+                    },
+                    res,
+                );
+            }
+
             for (let row of results) {
                 const product = new ProductModel({
                     requestId,
-                    serialNumber: row["Serial Number"],
-                    productName: row["Product Name"],
-                    inputImageUrls: row["Input Image Urls"].split(",").map((url) => url.trim()),
+                    serialNumber: row.serialNumber,
+                    productName: row.productName,
+                    inputImageUrls: row.inputImageUrls,
                 });
 
                 await product.save();

@@ -1,0 +1,3 @@
+"Serial Number","Product Name","Input Image Urls","Output Image Urls"
+1,"SKU1","https://randomuser.me/api/portraits/women/65.jpg,https://randomuser.me/api/portraits/women/64.jpg","https://res.cloudinary.com/drhm1slc6/image/upload/v1725116309/cbfd750d-5414-4478-8000-51b4dfd57955.jpg,https://res.cloudinary.com/drhm1slc6/image/upload/v1725116311/2944df91-0915-4d89-875e-287f0d2cd971.jpg"
+2,"SKU2","https://randomuser.me/api/portraits/women/62.jpg","https://res.cloudinary.com/drhm1slc6/image/upload/v1725116309/e75163c8-29bb-4a2d-969d-6bfbc3b4913e.jpg"

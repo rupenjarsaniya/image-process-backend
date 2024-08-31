@@ -3,6 +3,8 @@ const { ProductModel, RequestModel } = require("../models");
 const sharp = require("sharp");
 const uuid = require("uuid");
 const uploadToCloudinary = require("../helper/uploadToCloudinary");
+const { generateOutputCSV } = require("../utils/csvUtils");
+const env = require("../config/env");
 
 const processImages = async (product) => {
     try {
@@ -21,7 +23,7 @@ const processImages = async (product) => {
                 const buffer = await sharp(imageResponse.data).jpeg({ quality: 50 }).toBuffer();
 
                 const cloudinaryFileName = `${uuid.v4()}`;
-                const outputUrl = await uploadToCloudinary(buffer, cloudinaryFileName, "jpg"); // Pass the format as 'jpg' or any other
+                const outputUrl = await uploadToCloudinary(buffer, cloudinaryFileName, "jpg");
 
                 outputUrls.push(outputUrl);
             } catch (error) {
@@ -47,13 +49,40 @@ const processImages = async (product) => {
     }
 };
 
+const triggerWebhook = async (requestId) => {
+    const webhookUrl = env.webhookUrl;
+
+    if (!webhookUrl) {
+        console.error("Webhook URL is not set");
+        return;
+    }
+
+    try {
+        const products = await ProductModel.find({ requestId, status: "COMPLETED" });
+        const payload = products.map((product) => ({
+            serialNumber: product.serialNumber,
+            productName: product.productName,
+            inputImageUrls: product.inputImageUrls,
+            outputImageUrls: product.outputImageUrls,
+        }));
+
+        await generateOutputCSV(products, requestId);
+
+        await axios.post(webhookUrl, payload);
+        console.log("Webhook triggered successfully");
+    } catch (error) {
+        console.error("Error triggering webhook:", error.message);
+    }
+};
+
 const updateRequestStatus = async (requestId) => {
     const productsPending = await ProductModel.find({ requestId, status: { $ne: "COMPLETED" } });
 
     if (productsPending.length === 0) {
         await RequestModel.updateOne({ requestId }, { status: "COMPLETED" });
+        await triggerWebhook(requestId);
     } else {
-        const hasFailed = await Product.findOne({ requestId, status: "FAILED" });
+        const hasFailed = await ProductModel.findOne({ requestId, status: "FAILED" });
         if (hasFailed) {
             await RequestModel.updateOne({ requestId }, { status: "FAILED" });
         } else {
@@ -63,7 +92,7 @@ const updateRequestStatus = async (requestId) => {
 };
 
 const markRequestAsFailed = async (requestId) => {
-    await RequestModel.updateOne({ requestId }, { status: "failed" });
+    await RequestModel.updateOne({ requestId }, { status: "FAILED" });
 };
 
 module.exports = { processImages };
