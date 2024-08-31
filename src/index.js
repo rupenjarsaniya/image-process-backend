@@ -6,6 +6,14 @@ const env = require("./config/env");
 const { errorLogger, errorResponder } = require("./middlewares/errorHandler.middleware");
 const invalidPathHandler = require("./middlewares/pathHandler.middleware");
 const requestLogger = require("./middlewares/reqLogger.middleware");
+const cloudinary = require("cloudinary").v2;
+const router = require("./routes");
+
+cloudinary.config({
+    cloud_name: env.cloudinary.cloud_name,
+    api_key: env.cloudinary.api_key,
+    api_secret: env.cloudinary.api_secret,
+});
 
 const app = express();
 
@@ -14,6 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.options("*", cors());
 app.use(requestLogger);
+app.use("/v1", router);
 
 app.get("/", (_req, res) => res.send("Backend is running, use /version or /ping"));
 app.get("/version", (_req, res) => res.send(config.version));
