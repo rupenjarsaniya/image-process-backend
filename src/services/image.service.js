@@ -80,7 +80,7 @@ const updateRequestStatus = async (requestId) => {
 
     if (productsPending.length === 0) {
         await RequestModel.updateOne({ requestId }, { status: "COMPLETED" });
-        await triggerWebhook(requestId);
+        // await triggerWebhook(requestId);
     } else {
         const hasFailed = await ProductModel.findOne({ requestId, status: "FAILED" });
         if (hasFailed) {
